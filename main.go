@@ -1,11 +1,22 @@
 package main
 
 import (
-	_ "github.com/logpacker/PayPal-Go-SDK"
+	"os"
+
+	"github.com/logpacker/PayPal-Go-SDK"
 )
 
 func main() {
 
+	c := getPayPalClient()
+
+}
+
+func getPayPalClient() PayPal-Go-SDK {
+	c, err := paypal.NewClient("clientID", "secretID", paypalsdk.APIBaseSandBox)
+	c.SetLog(os.Stdout)
+
+	accessToken, err := c.GetAccessToken()
 }
 
 type BridgeRequest struct {
