@@ -5,10 +5,16 @@ import (
 	"log"
 	"os"
 
+	"github.com/gin-gonic/gin"
 	"github.com/logpacker/PayPal-Go-SDK"
 )
 
 func main() {
+	r := gin.Default()
+	r.GET("/", Index)
+	r.POST("/payouts", Payouts)
+
+	log.Fatal(r.Run())
 
 	c := getPayPalClient()
 
@@ -50,6 +56,14 @@ func main() {
 	resp, _ = c.GetPayout(resp.BatchHeader.PayoutBatchID)
 	d, _ = json.MarshalIndent(resp, "", "  ")
 	log.Println(string(d))
+}
+
+func Index(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "PayPal external adapter"})
+}
+
+func Payouts(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "Sent Payment to test@test.com"})
 }
 
 func getPayPalClient() *paypalsdk.Client {
