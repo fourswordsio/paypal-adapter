@@ -1,69 +1,67 @@
 package main
 
 import (
-	"encoding/json"
 	"log"
+	"net/http"
 	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/logpacker/PayPal-Go-SDK"
 )
 
+var ppc = getPayPalClient()
+
 func main() {
 	r := gin.Default()
-	r.GET("/", Index)
-	r.POST("/payouts", Payouts)
+	r.POST("/", Payouts)
 
 	log.Fatal(r.Run())
+	// d, _ := json.MarshalIndent(resp, "", "  ")
+	// log.Println(string(d))
 
-	c := getPayPalClient()
+	// resp, _ = c.GetPayout(resp.BatchHeader.PayoutBatchID)
+	// d, _ = json.MarshalIndent(resp, "", "  ")
+	// log.Println(string(d))
+}
 
-	resp, err := c.CreateSinglePayout(paypalsdk.Payout{
+func Payouts(c *gin.Context) {
+	br := BridgeRequest{}
+	if err := c.BindJSON(&br); err != nil {
+		c.AbortWithError(http.StatusUnprocessableEntity, err)
+		return
+	}
+	_, err := createSinglePayout(br.Data.Email, br.Data.Amount)
+
+	if err != nil {
+		c.AbortWithError(http.StatusInternalServerError, err)
+	} else {
+		c.JSON(200, BridgeResponse{
+			JobRunID: br.JobRunID,
+			Status:   "pending_bridge",
+			Pending:  true,
+		})
+	}
+}
+
+func createSinglePayout(email, amount string) (*paypalsdk.PayoutResponse, error) {
+	return ppc.CreateSinglePayout(paypalsdk.Payout{
 		SenderBatchHeader: &paypalsdk.SenderBatchHeader{
 			EmailSubject: "Subject",
 		},
 		Items: []paypalsdk.PayoutItem{
 			paypalsdk.PayoutItem{
 				RecipientType: "EMAIL",
-				Receiver:      "test@chainlink.com",
+				Receiver:      email,
 				Amount: &paypalsdk.AmountPayout{
-					Value:    "1.11",
+					Value:    amount,
 					Currency: "USD",
 				},
 				Note:         "thanks for the secure data shaggy",
 				SenderItemID: "1337",
 			},
-			paypalsdk.PayoutItem{
-				RecipientType: "EMAIL",
-				Receiver:      "tabba.ahmad-buyer@gmail.com",
-				Amount: &paypalsdk.AmountPayout{
-					Value:    ".50",
-					Currency: "USD",
-				},
-				Note:         "Note",
-				SenderItemID: "SenderItemID",
-			},
 		},
 	})
 
-	if err != nil {
-		panic(err)
-	}
-
-	d, _ := json.MarshalIndent(resp, "", "  ")
-	log.Println(string(d))
-
-	resp, _ = c.GetPayout(resp.BatchHeader.PayoutBatchID)
-	d, _ = json.MarshalIndent(resp, "", "  ")
-	log.Println(string(d))
-}
-
-func Index(c *gin.Context) {
-	c.JSON(200, gin.H{"message": "PayPal external adapter"})
-}
-
-func Payouts(c *gin.Context) {
-	c.JSON(200, gin.H{"message": "Sent Payment to test@test.com"})
 }
 
 func getPayPalClient() *paypalsdk.Client {
@@ -93,13 +91,18 @@ func setToken(c *paypalsdk.Client) {
 
 type BridgeRequest struct {
 	JobRunID    string `json:"id"`
-	data        int
+	Data        Payout `json:"data"`
 	ResponseURL string `json:"responseURL"`
+}
+
+type Payout struct {
+	Email  string `json:"email"`
+	Amount string `json:"amount"`
 }
 
 type BridgeResponse struct {
 	JobRunID string `json:"jobRunID"`
-	data     int
+	Data     gin.H  `json:"data"`
 	Status   string `json:"status"`
 	Error    string `json:"error"`
 	Pending  bool   `json:"pending"`
