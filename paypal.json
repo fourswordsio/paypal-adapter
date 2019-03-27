@@ -1,0 +1,4 @@
+{
+  "initiators": [{ "type": "web" }],
+  "tasks": [{ "type": "paypal", "params": {"email": "test@chainlink.com", "amount": "1.00"}}]
+}
